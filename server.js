@@ -1,9 +1,6 @@
 'use strict';
 
-/*
-  The .env file has this in it:
-  PORT=3000
-*/
+
 require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
@@ -36,12 +33,20 @@ app.get('/cats', (request, response) => {
 app.get('/location', handleLocation);
 
 function handleLocation( request, response ) {
-  let city = request.query.city;
-  // eventually, get this from a real live API
-  // But today, pull it from a file.
-  let locationData = require('./data/geo.json');
-  let location = new Location(city, locationData[0]);
-  response.json(location);
+  try {
+    let city = request.query.city;
+    let locationData = require('./data/geo.json');
+    let location = new Location(city, locationData[0]);
+    // throw 'John is ugly or something';
+    response.json(location);
+  }
+  catch(error) {
+    let errorObj = {
+      status: 500,
+      responseText: error,
+    };
+    response.status(500).json(errorObj);
+  }
 }
 
 function Location(city, data) {
@@ -51,36 +56,36 @@ function Location(city, data) {
   this.longitude = data.lon;
 }
 
-/* Restaurants
-  {
-    "restaurant": "Serious Pie",
-    "cuisines": "Pizza, Italian",
-    "locality": "Belltown"
-  },
-*/
 
-app.get('/restaurants', handleRestaurants);
+// Weather
+app.get('/weather', handleWeather);
 
-function handleRestaurants(request, response) {
-  // Eventually, will be an API call
-  // Today ... get a file
+function handleWeather( request, response) {
+  try {
+    let weatherData = require ('./data/darksky.json');
+    let listofDays = [];
 
-  let restaurantData = require('./data/restaurants.json');
-  let listOfRestaurants = [];
-
-  restaurantData.nearby_restaurants.forEach( r => {
-    let restaurant = new Restaurant(r);
-    listOfRestaurants.push(restaurant);
-  });
-
-  response.json(listOfRestaurants);
-
+    weatherData.daily.data.forEach( day => {
+      let weather = new Weather(day);
+      listofDays.push(weather);
+    });
+    response.json(listofDays);
+  }
+  catch(error) {
+    let errorObj = {
+      status: 500,
+      responseText: error,
+    };
+    response.status(500).json(errorObj);
+  }
 }
 
-function Restaurant(data) {
-  this.name = data.restaurant.name;
-  this.cuisines = data.restaurant.cuisines;
-  this.locality = data.restaurant.location.locality;
+
+function Weather(data) {
+  this.time = data.time;
+  this.forecast = data.summary;
 }
+
+
 
 app.listen( PORT, () => console.log('Server up on', PORT));
