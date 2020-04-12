@@ -4,42 +4,36 @@
 require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
+const superagent = require('superagent');
 
 const PORT = process.env.PORT;
 
 const app = express();
 app.use(cors());
 
-// Test Endpoint
-// http://localhost:3000/test
-app.get( '/test', (request, response) => {
-  const name = request.query.name;
-  response.send( `Hello, ${name}` );
-});
-
-app.get('/cats', (request, response) => {
-  let type = request.query.type;
-  let words = '';
-  if ( type === 'calico' ) {
-    words = 'You are a good person';
-  }
-  else {
-    words = 'We do not have those';
-  }
-
-  response.send(words);
-});
 
 app.get('/location', handleLocation);
+app.get('/weather', handleWeather);
 
 function handleLocation( request, response ) {
   try {
     let city = request.query.city;
-    let locationData = require('./data/geo.json');
-    let location = new Location(city, locationData[0]);
-    // throw 'John is ugly or something';
-    response.json(location);
+    const url = 'https://us1.locationiq.com/v1/search.php';
+    const queryStringParams = {
+      key: process.env.LOCATION_TOKEN,
+      q: city,
+      format: 'json',
+      limit: 1,
+    };
+    superagent.get(url)
+      .query(queryStringParams)
+      .then( data => {
+        let locationData = data.body[0];
+        let location = new Location(city, locationData);
+        response.json(location);
+      });
   }
+
   catch(error) {
     let errorObj = {
       status: 500,
@@ -58,7 +52,7 @@ function Location(city, data) {
 
 
 // Weather
-app.get('/weather', handleWeather);
+
 
 function handleWeather( request, response) {
   try {
@@ -79,7 +73,6 @@ function handleWeather( request, response) {
     response.status(500).json(errorObj);
   }
 }
-
 
 function Weather(data) {
   this.time = data.time;
