@@ -7,6 +7,11 @@ const express = require('express');
 const superagent = require('superagent');
 const PORT = process.env.PORT;
 const app = express();
+const pg = require('pg');
+
+const client = new pg.Client(process.env.DATABSE_URL);
+client.connect();
+
 
 
 //Handler functions
@@ -16,7 +21,7 @@ app.get('/weather', handleWeather);
 app.get('/trails', handleTrails);
 
 function handleLocation(request, response) {
-  let city = request.query.city;
+  let city = request.query.city();
   const url = 'https://us1.locationiq.com/v1/search.php';
   const queryStringParams = {
     key: process.env.LOCATION_KEY,
@@ -40,6 +45,7 @@ function Location(city, data) {
   this.latitude = data.lat;
   this.longitude = data.lon;
 }
+
 
 
 // Weather
@@ -98,5 +104,7 @@ function HikingTrails(trail) {
   this.condition_date = trail.conditionDate.substring(0, 10);
   this.condition_time = trail.conditionDate.substring(11, 20);
 }
+
+
 
 app.listen(PORT, () => console.log('Server up on', PORT));
