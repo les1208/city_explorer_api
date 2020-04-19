@@ -8,10 +8,3 @@ CREATE TABLE locations (
     longitude NUMERIC(10, 7)
   );
 
-  CREATE TABLE weather (
-    id SERIAL PRIMARY KEY,
-    forecast VARCHAR(225),
-    time VARCHAR(225),
-    location_id INTEGER NOT NULL,
-    FOREIGN KEY (location_id) REFERENCES locations (id)
-  );

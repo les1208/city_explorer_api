@@ -1,27 +1,28 @@
 'use strict';
 
-
 require('dotenv').config();
+
 const cors = require('cors');
+const pg = require('pg');
 const express = require('express');
 const superagent = require('superagent');
+
+//Globals
 const PORT = process.env.PORT;
 const app = express();
-const pg = require('pg');
+const client = new pg.Client(process.env.DATABASE_URL);
 
-const client = new pg.Client(process.env.DATABSE_URL);
 client.connect();
-
-
-
-//Handler functions
 app.use(cors());
+
+
+//Routes
 app.get('/location', handleLocation);
 app.get('/weather', handleWeather);
 app.get('/trails', handleTrails);
 
 function handleLocation(request, response) {
-  let city = request.query.city();
+  let city = request.query.city;
   const url = 'https://us1.locationiq.com/v1/search.php';
   const queryStringParams = {
     key: process.env.LOCATION_KEY,
@@ -38,7 +39,6 @@ function handleLocation(request, response) {
     });
 }
 
-
 function Location(city, data) {
   this.search_query = city;
   this.formatted_query = data.display_name;
@@ -46,23 +46,60 @@ function Location(city, data) {
   this.longitude = data.lon;
 }
 
+app.get('/location', (request,response) => {
+
+  const SQL = 'SELECT * FROM location';
+
+  client.query(SQL)
+    .then( results => {
+      if( results.rowCount >= 1 ) {
+        response.status(200).json(location);
+      }
+      else {
+        response.status(400).send('Avada Kedavra');
+      }
+    })
+    .catch(err => response.status(500).send(err));
+});
+
+app.get('/new', (request,response) => {
+
+  let SQL = `
+      INSERT INTO location (latitude, longitude)
+      VALUES($1, $2)
+    `;
+
+  let VALUES = [request.query.latitude, request.query.longitude];
+
+  client.query(SQL, VALUES)
+    .then( results => {
+      if ( results.rowCount >= 1 ) {
+        response.status(301).redirect('https://us1.locationiq.com/v1/search.php');
+      }
+      else {
+        response.status(200).send('Nada');
+      }
+    })
+    .catch(err => response.status(500).send(err));
+
+});
 
 
-// Weather
 
+// Weather forecast
 function handleWeather(request, response) {
   const weatherUrl = 'https://api.darksky.net/forecast/';
   let key = process.env.DARKSKY_KEY;
   let lat = request.query.latitude;
   let lon = request.query.longitude;
-  let newWeath = `${weatherUrl}${key}/${lat},${lon}`;
+  let newWeathUrl = `${weatherUrl}${key}/${lat},${lon}`;
 
-  superagent.get(newWeath)
+  superagent.get(newWeathUrl)
     .then(data => {
-      let listofDays = data.body.daily.data.map(day => {
+      let weatherData = data.body.daily.data.map(day => {
         return new Weather(day);
       });
-      response.json(listofDays);
+      response.status(200).json(weatherData);
     });
 }
 
@@ -88,7 +125,7 @@ function handleTrails(request, response) {
       let trailList = data.body.trails.map(trail => {
         return new HikingTrails(trail);
       });
-      response.json(trailList);
+      response.status(200).json(trailList);
     });
 }
 
@@ -104,7 +141,5 @@ function HikingTrails(trail) {
   this.condition_date = trail.conditionDate.substring(0, 10);
   this.condition_time = trail.conditionDate.substring(11, 20);
 }
-
-
 
 app.listen(PORT, () => console.log('Server up on', PORT));
