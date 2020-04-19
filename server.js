@@ -20,6 +20,8 @@ app.use(cors());
 app.get('/location', handleLocation);
 app.get('/weather', handleWeather);
 app.get('/trails', handleTrails);
+app.get('/movies', handleMovies);
+app.get('/yelp', handleYelp);
 
 function handleLocation(request, response) {
   let city = request.query.city;
@@ -140,6 +142,58 @@ function HikingTrails(trail) {
   this.conditions = trail.conditionDetails;
   this.condition_date = trail.conditionDate.substring(0, 10);
   this.condition_time = trail.conditionDate.substring(11, 20);
+}
+
+//Get Movies
+function handleMovies(request, response) {
+  let key = process.env.MOVIE_KEY;
+  let region = request.query.search_query;
+  const url = `https://api.themoviedb.org/3/search/movie?api_key=${key}&query=${region}&$include_adult=false`;
+  superagent.get(url)
+    .then(data => {
+      let movieData = data.body.results.map( movie => {
+        return new Movie(movie);
+      });
+      response.status(200).json(movieData);
+    });
+}
+
+function Movie(movie) {
+  this.title = movie.title;
+  this.overview = movie.overview;
+  this.average_votes = movie.vote_average;
+  this.total_votes = movie.vote_count;
+  this.image_url = 'https://image.tmdb.org/t/p/w500' + movie.poster_path;
+  this.popularity = movie.popularity;
+  this.released_on = movie.release_date;
+}
+
+// Get Restaurants
+function handleYelp(request, response) {
+  const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.search_query}`;
+  console.log('new restaurants');
+  try {
+    superagent.get (url)
+      .set('Authorization', `Bearer ${process.env.YELP_KEY}`)
+      .then( data => {
+        let restaurantData = data.body.businesses.map( restaurant => new Yelp(restaurant));
+        response.status(200).send(restaurantData);
+      });
+  } catch(err){
+    let errObject = {
+      status: 500,
+      responseText: 'Contact Support',
+    };
+    response.status(500).json(errObject);
+  }
+}
+
+function Yelp(restaurant) {
+  this.name = restaurant.name;
+  this.image_url = restaurant.image_url;
+  this.price = restaurant.price;
+  this.rating = restaurant.rating;
+  this.url = restaurant.url;
 }
 
 app.listen(PORT, () => console.log('Server up on', PORT));
